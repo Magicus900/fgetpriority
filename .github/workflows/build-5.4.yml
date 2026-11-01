@@ -18,7 +18,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libelf-dev bc bison flex ccache
 
-      - name: Download Android 5.4 Kernel Headers / Source
+      - name: Download Android 5.4 Kernel Source
         run: |
           git clone --depth=1 https://android.googlesource.com/kernel/common -b android12-5.4 kernel_src
 
@@ -31,7 +31,6 @@ jobs:
       - name: Compile LKM for 5.4
         run: |
           cd kernel
-          # Собираем модуль, используя подготовленные исходники ядра 5.4
           make -C ../kernel_src M=$PWD ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LLVM=1 modules
           llvm-strip --strip-debug fgetpriority.ko
           cp fgetpriority.ko $GITHUB_WORKSPACE/
