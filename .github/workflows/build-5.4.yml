@@ -16,7 +16,7 @@ jobs:
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libelf-dev bc bison flex ccache
+          sudo apt-get install -y build-essential libelf-dev bc bison flex ccache llvm clang
 
       - name: Download Android 5.4 Kernel Source
         run: |
@@ -31,7 +31,8 @@ jobs:
       - name: Compile LKM for 5.4
         run: |
           cd kernel
-          make -C ../kernel_src M=$PWD ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LLVM=1 modules
+          # Исправленный вызов make с явным указанием компиляторов
+          make -C ../kernel_src M=$PWD ARCH=arm64 CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip modules
           llvm-strip --strip-debug fgetpriority.ko
           cp fgetpriority.ko $GITHUB_WORKSPACE/
 
