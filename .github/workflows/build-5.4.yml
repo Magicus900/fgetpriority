@@ -1,31 +1,11 @@
-name: Build fgetpriority APatch ZIP
-
-on:
-  push:
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install build tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bc bison flex libssl-dev make clang lld llvm git zip curl build-essential libelf-dev
-
-      - name: Clone Android Kernel 5.4
-        run: |
-          git clone --depth=1 https://android.googlesource.com/kernel/common kernel_src
-
-      - name: Prepare Kernel and Fix Config
+- name: Prepare Kernel and Enable CONFIG_FGETPRIORITY
         run: |
           cd kernel_src
           make ARCH=arm64 LLVM=1 LLVM_IAS=1 gki_defconfig
           
-          # Отключаем отладочные опции и gendwarfksyms, чтобы не требовались dwarf.h
+          # Принудительно включаем наш модуль в конфигурацию ядра
+          ./scripts/config --enable CONFIG_FGETPRIORITY
+          
           scripts/config --disable DEBUG_INFO
           scripts/config --disable GENDWARFKSYMS
           
@@ -38,14 +18,3 @@ jobs:
           make -C $(pwd)/kernel_src M=$(pwd)/kernel ARCH=arm64 LLVM=1 LLVM_IAS=1 KERNELRELEASE="5.4.254-android12-9-g3610580b8b22-ab2213" modules
           mkdir -p module/ko
           cp kernel/fgetpriority.ko module/ko/fgetpriority.ko
-
-      - name: Package flashable ZIP for APatch
-        run: |
-          cd module
-          zip -r9 ../fgetpriority-module.zip ./*
-
-      - name: Upload Ready APatch ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: fgetpriority-apatch-zip
-          path: fgetpriority-module.zip
