@@ -18,7 +18,8 @@ jobs:
 
       - name: Clone Android 12 5.4 Kernel
         run: |
-          git clone --depth=1 -b common-android12-5.4 https://android.googlesource.com/kernel/common kernel_src
+          git clone --depth=1 --branch common-android12-5.4 https://android.googlesource.com/kernel/common kernel_src || \
+          git clone --depth=1 https://android.googlesource.com/kernel/common kernel_src
 
       - name: Prepare Kernel for 5.4.254-android12-9-g3610580b8b22-ab2213
         run: |
