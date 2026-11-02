@@ -11,10 +11,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build tools
+      - name: Install build tools and DWARF headers
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison flex libssl-dev make clang lld llvm git zip curl build-essential libelf-dev
+          sudo apt-get install -y bc bison flex libssl-dev make clang lld llvm git zip curl build-essential libelf-dev libdwarf-dev binutils-dev
 
       - name: Clone Android 12 5.4 Kernel
         run: |
