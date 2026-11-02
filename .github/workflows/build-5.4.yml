@@ -33,16 +33,21 @@ jobs:
           echo "5.4.254-android12-9-g3610580b8b22-ab2213" > include/config/kernel.release
           make ARCH=arm64 LLVM=1 LLVM_IAS=1 KERNELRELEASE="5.4.254-android12-9-g3610580b8b22-ab2213" olddefconfig modules_prepare
 
-      - name: Build fgetpriority.ko (Strict Mode)
+      - name: Debug and Build Module (Strict)
         run: |
-          # Убран || true: теперь сборка упадет прямо на реальной ошибке Make с полным логом
-          make -C $(pwd)/kernel_src M=$(pwd)/kernel ARCH=arm64 LLVM=1 LLVM_IAS=1 KERNELRELEASE="5.4.254-android12-9-g3610580b8b22-ab2213" V=1 modules
+          echo "=== Проверяем файлы в папке kernel ==="
+          ls -la kernel/
           
-          mkdir -p module/ko
-          cp kernel/fgetpriority.ko module/ko/fgetpriority.ko
+          echo "=== Содержимое kernel/Makefile ==="
+          cat kernel/Makefile
+          
+          echo "=== Запуск компиляции с подробным логом ==="
+          make -C $(pwd)/kernel_src M=$(pwd)/kernel ARCH=arm64 LLVM=1 LLVM_IAS=1 KERNELRELEASE="5.4.254-android12-9-g3610580b8b22-ab2213" V=1 modules
 
       - name: Package flashable ZIP for APatch
         run: |
+          mkdir -p module/ko
+          cp kernel/fgetpriority.ko module/ko/fgetpriority.ko
           cd module
           zip -r9 ../fgetpriority-module.zip ./*
 
