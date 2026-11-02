@@ -11,10 +11,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build tools and Android NDK
+      - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison flex libssl-dev make clang lld llvm git zip
+          sudo apt-get install -y bc bison flex libssl-dev make clang lld llvm git zip curl build-essential libelf-dev
 
       - name: Clone Android 12 5.4 Kernel
         run: |
@@ -33,14 +33,6 @@ jobs:
           make -C $(pwd)/kernel_src M=$(pwd)/kernel ARCH=arm64 LLVM=1 LLVM_IAS=1 KERNELRELEASE="5.4.254-android12-9-g3610580b8b22-ab2213" modules
           mkdir -p module/ko
           cp kernel/fgetpriority.ko module/ko/fgetpriority.ko
-
-      - name: Build userspace binary (if Makefile exists)
-        run: |
-          if [ -f userspace/Makefile ] || [ -f userspace/*.c ]; then
-            cd userspace
-            ${ANDROID_NDK_LATEST_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android31-clang -O2 *.c -o fgetpriority_ctl 2>/dev/null || true
-            cd ..
-          fi
 
       - name: Package flashable ZIP for APatch
         run: |
