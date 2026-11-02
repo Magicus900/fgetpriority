@@ -1,55 +1,54 @@
-name: Build fgetpriority for android12-5.4
+name: Build fgetpriority APatch ZIP
 
 on:
+  push:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout lkm branch
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          repository: aerath-stuff/fgetpriority
-          ref: lkm
 
-      - name: Install Build Dependencies
+      - name: Install build tools and Android NDK
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libelf-dev bc bison flex ccache llvm clang lld
+          sudo apt-get install -y bc bison flex libssl-dev make clang lld llvm git zip
 
-      - name: Download Android 5.4 Kernel Source
+      - name: Clone Android 12 5.4 Kernel
         run: |
-          git clone --depth=1 https://android.googlesource.com/kernel/common -b android12-5.4 kernel_src
+          git clone --depth=1 -b common-android12-5.4 https://android.googlesource.com/kernel/common kernel_src
 
-      - name: Prepare Kernel Headers
+      - name: Prepare Kernel for 5.4.254-android12-9-g3610580b8b22-ab2213
         run: |
           cd kernel_src
-          make ARCH=arm64 defconfig
-          make ARCH=arm64 scripts prepare modules_prepare
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 gki_defconfig
+          sed -i 's/CONFIG_LOCALVERSION_AUTO=y/# CONFIG_LOCALVERSION_AUTO is not set/' .config
+          echo "5.4.254-android12-9-g3610580b8b22-ab2213" > include/config/kernel.release
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 KERNELRELEASE="5.4.254-android12-9-g3610580b8b22-ab2213" modules_prepare
 
-      - name: Compile LKM for 5.4
+      - name: Build fgetpriority.ko and place into module/ko/
         run: |
-          # Переходим в папку с исходниками модуля (в ветке lkm они лежат в корне или в kernel/)
-          if [ -d "kernel" ]; then cd kernel; fi
-          
-          # Запускаем компиляцию с отключением предупреждений как ошибок
-          make -C ../kernel_src M=$PWD ARCH=arm64 CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip EXTRA_CFLAGS="-Wno-error" modules
-          
-          llvm-strip --strip-debug fgetpriority.ko
-          cp fgetpriority.ko $GITHUB_WORKSPACE/
+          make -C $(pwd)/kernel_src M=$(pwd)/kernel ARCH=arm64 LLVM=1 LLVM_IAS=1 KERNELRELEASE="5.4.254-android12-9-g3610580b8b22-ab2213" modules
+          mkdir -p module/ko
+          cp kernel/fgetpriority.ko module/ko/fgetpriority.ko
 
-      - name: Package Magisk/KSU Module ZIP
+      - name: Build userspace binary (if Makefile exists)
         run: |
-          cd $GITHUB_WORKSPACE
-          mkdir -p out_zip/ko
-          cp fgetpriority.ko out_zip/ko/android12-5.4_arm64_fgetpriority.ko
-          cp customize.sh module.prop service.sh out_zip/ 2>/dev/null || true
-          cd out_zip
-          zip -r ../fgetpriority_android12-5.4.zip *
+          if [ -f userspace/Makefile ] || [ -f userspace/*.c ]; then
+            cd userspace
+            ${ANDROID_NDK_LATEST_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android31-clang -O2 *.c -o fgetpriority_ctl 2>/dev/null || true
+            cd ..
+          fi
 
-      - name: Upload Ready ZIP
+      - name: Package flashable ZIP for APatch
+        run: |
+          cd module
+          zip -r9 ../fgetpriority-module.zip ./*
+
+      - name: Upload Ready APatch ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: fgetpriority_android12-5.4_module
-          path: fgetpriority_android12-5.4.zip
+          name: fgetpriority-apatch-zip
+          path: fgetpriority-module.zip
